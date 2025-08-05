@@ -42,13 +42,18 @@ export default function TenantsPage() {
 
   const fetchTenants = async () => {
     try {
+      setLoading(true);
+      console.log('Fetching tenant data...');
       const [tenantsResponse, statsResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/tenants`),
-        axios.get(`${API_BASE_URL}/api/tenants/stats`),
+        fetch(`/api/tenants`),
+        fetch(`/api/tenants/stats`),
       ]);
 
-      setTenants(tenantsResponse.data.data || []);
-      setStats(statsResponse.data);
+      const tenantsData = await tenantsResponse.json();
+      const statsData = await statsResponse.json();
+      const tenants = tenantsData.data || tenantsData;
+      setTenants(Array.isArray(tenants) ? tenants : []);
+      setStats(statsData.data || statsData);
     } catch (error) {
       console.error('Error fetching tenants:', error);
       showSnackbar('Failed to fetch tenants', 'error');

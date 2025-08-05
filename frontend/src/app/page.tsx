@@ -78,12 +78,15 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         const [statsRes, activityRes] = await Promise.all([
-          axios.get(`/api/rfid/stats`),
-          axios.get(`/api/rfid/activity/recent?limit=10`)
+          fetch(`/api/rfid/stats`),
+          fetch(`/api/rfid/activity/recent?limit=10`)
         ]);
-        
-        setDeviceStats(statsRes.data);
-        setRecentActivity(activityRes.data || []);
+
+        const statsData = await statsRes.json();
+        const activityData = await activityRes.json();
+
+        setDeviceStats(statsData);
+        setRecentActivity(activityData || []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       }

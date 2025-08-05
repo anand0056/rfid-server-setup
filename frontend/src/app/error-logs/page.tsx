@@ -43,7 +43,7 @@ export default function ErrorLogsPage() {
         }
       });
 
-      const response = await fetch(`${API_BASE_URL}/error-logs?${queryParams}`);
+      const response = await fetch(`/api/error-logs?${queryParams}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
