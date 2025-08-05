@@ -36,4 +36,23 @@ export class RfidStatsController {
       );
     }
   }
+
+  @Get('dashboard')
+  async getDashboardStats(
+    @Query('tenantId') tenantId?: string,
+  ) {
+    try {
+      this.logger.log(`Getting dashboard stats with tenantId: ${tenantId}`);
+
+      return await this.rfidStatsService.getDashboardStats({
+        tenantId: tenantId ? +tenantId : undefined,
+      });
+    } catch (error) {
+      this.logger.error(`Error getting dashboard stats: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to get dashboard stats: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }

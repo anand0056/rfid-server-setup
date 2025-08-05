@@ -66,7 +66,7 @@ export default function ErrorLogsPage() {
   // Fetch stats
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/error-logs/stats`);
+      const response = await fetch('/api/error-logs/stats');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

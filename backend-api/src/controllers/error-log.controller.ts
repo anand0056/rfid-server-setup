@@ -2,7 +2,7 @@ import { Controller, Get, Post, Param, Query, Body, ParseIntPipe } from '@nestjs
 import { ErrorLogService, ErrorLogQueryParams } from '../services/error-log.service';
 import { ErrorType } from '../entities/error-log.entity';
 
-@Controller('error-logs')
+@Controller('api/error-logs')
 export class ErrorLogController {
   constructor(private readonly errorLogService: ErrorLogService) {}
 

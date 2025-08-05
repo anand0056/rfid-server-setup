@@ -66,35 +66,32 @@ interface RecentActivity {
 }
 
 export default function DashboardPage() {
-  const [deviceStats, setDeviceStats] = useState<DeviceStats>({
-    cards: { total: 0, active: 0, inactive: 0, vehicles: 0 },
-    readers: { total: 0, online: 0, offline: 0 },
-    scans: { today: 0, lastHour: 0 },
-  });
-  
+  const [deviceStats, setDeviceStats] = useState<DeviceStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
         const [statsRes, activityRes] = await Promise.all([
-          fetch(`/api/rfid/stats`),
-          fetch(`/api/rfid/activity/recent?limit=10`)
+          axios.get<DeviceStats>('/api/rfid/stats/dashboard'),
+          axios.get('/api/rfid/activity/recent?limit=10')
         ]);
 
-        const statsData = await statsRes.json();
-        const activityData = await activityRes.json();
-
-        setDeviceStats(statsData);
-        setRecentActivity(activityData || []);
+        setDeviceStats(statsRes.data);
+        setRecentActivity(activityRes.data || []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
+        setError('Failed to load dashboard data');
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
   }, []);
 
   const formatTimestamp = (timestamp: string) => {
@@ -110,6 +107,30 @@ export default function DashboardPage() {
       default: return 'default';
     }
   };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography>Loading dashboard data...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
+
+  if (!deviceStats) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography>No data available</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>

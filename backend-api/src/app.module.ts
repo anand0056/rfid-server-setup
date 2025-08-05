@@ -34,7 +34,7 @@ import { HealthController } from './controllers/health.controller';
   imports: [
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: 'rfid_mysql', //process.env.DB_HOST || 
+      host: 'localhost', //process.env.DB_HOST || 
       port: 3306,
       username: 'rfid', //process.env.DB_USER || 'rfid',
       password: 'rfidpass', //process.env.DB_PASSWORD || 'rfidpass',

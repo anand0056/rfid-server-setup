@@ -87,44 +87,46 @@ export class ErrorLogService {
     });
   }
 
-  async getStats(tenantId: number = 1): Promise<ErrorLogStats> {
-    const queryBuilder = this.errorLogRepository
-      .createQueryBuilder('error_log')
-      .where('error_log.tenantId = :tenantId', { tenantId });
+  async getStats(tenantId?: number): Promise<ErrorLogStats> {
+    const queryBuilder = this.errorLogRepository.createQueryBuilder('error_log');
+    
+    if (tenantId) {
+      queryBuilder.where('error_log.tenant_id = :tenantId', { tenantId });
+    }
 
+    // Get total count
     const total = await queryBuilder.getCount();
-    const resolved = await queryBuilder.clone().andWhere('error_log.resolved = true').getCount();
-    const unresolved = total - resolved;
 
-    // Get count by error type
-    const typeCountsQuery = await this.errorLogRepository
-      .createQueryBuilder('error_log')
-      .select('error_log.errorType', 'errorType')
+    // Get resolved and unresolved counts
+    const resolved = await queryBuilder
+      .clone()
+      .where('error_log.resolved = :resolved', { resolved: true })
+      .getCount();
+
+    const unresolved = await queryBuilder
+      .clone()
+      .where('error_log.resolved = :resolved', { resolved: false })
+      .getCount();
+
+    // Get counts by error type
+    const byTypeResult = await queryBuilder
+      .clone()
+      .select('error_log.error_type', 'type')
       .addSelect('COUNT(*)', 'count')
-      .where('error_log.tenantId = :tenantId', { tenantId })
-      .groupBy('error_log.errorType')
+      .groupBy('error_log.error_type')
       .getRawMany();
 
-    const byType: Record<ErrorType, number> = {
-      [ErrorType.MQTT_PARSE_ERROR]: 0,
-      [ErrorType.DATABASE_ERROR]: 0,
-      [ErrorType.VALIDATION_ERROR]: 0,
-      [ErrorType.UNKNOWN_READER]: 0,
-      [ErrorType.UNKNOWN_CARD]: 0,
-      [ErrorType.GENERAL_ERROR]: 0,
-    };
+    const byType = byTypeResult.reduce((acc, { type, count }) => {
+      acc[type as ErrorType] = parseInt(count);
+      return acc;
+    }, {} as Record<ErrorType, number>);
 
-    typeCountsQuery.forEach(row => {
-      byType[row.errorType] = parseInt(row.count);
-    });
-
-    // Get recent count (last 24 hours)
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
+    // Get recent errors count (last 24 hours)
     const recentCount = await queryBuilder
       .clone()
-      .andWhere('error_log.createdAt >= :oneDayAgo', { oneDayAgo })
+      .where('error_log.created_at >= :recent', {
+        recent: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      })
       .getCount();
 
     return {
