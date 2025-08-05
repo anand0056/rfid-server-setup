@@ -12,6 +12,7 @@ import { Add as AddIcon } from '@mui/icons-material';
 import VehicleStats from '../../components/vehicles/VehicleStats';
 import VehiclesTable from '../../components/vehicles/VehiclesTable';
 import VehicleForm from '../../components/vehicles/VehicleForm';
+import { BACKEND_API_URL } from '../../flavours/apiConfig';
 
 interface Vehicle {
   id: number;
@@ -65,8 +66,7 @@ export default function VehiclesPage() {
     try {
       setLoading(true);
       console.log('Fetching vehicles data...');
-      
-      const response = await fetch(`/api/vehicles`);
+      const response = await fetch(`${BACKEND_API_URL}/api/vehicles`);
 
       console.log('Vehicles response status:', response.status);
 
@@ -185,8 +185,8 @@ export default function VehiclesPage() {
       console.log('Submitting vehicle payload:', payload);
 
       const url = editingVehicle 
-        ? `/api/vehicles/${editingVehicle.id}`
-        : `/api/vehicles`;
+        ? `${BACKEND_API_URL}/api/vehicles/${editingVehicle.id}`
+        : `${BACKEND_API_URL}/api/vehicles`;
       
       const method = editingVehicle ? 'PUT' : 'POST';
 
@@ -226,7 +226,7 @@ export default function VehiclesPage() {
     }
 
     try {
-      const response = await fetch(`/api/vehicles/${vehicle.id}`, {
+      const response = await fetch(`${BACKEND_API_URL}/api/vehicles/${vehicle.id}`, {
         method: 'DELETE',
       });
 

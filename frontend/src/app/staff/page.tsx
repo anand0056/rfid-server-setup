@@ -12,6 +12,7 @@ import { Add as AddIcon } from '@mui/icons-material';
 import StaffStats from '../../components/staff/StaffStats';
 import StaffTable from '../../components/staff/StaffTable';
 import StaffForm from '../../components/staff/StaffForm';
+import { BACKEND_API_URL } from '../../flavours/apiConfig';
 
 interface Staff {
   id: number;
@@ -59,12 +60,10 @@ export default function StaffPage() {
     try {
       setLoading(true);
       console.log('Fetching staff data...');
-      
-      // Use Next.js API routes
-      
+      // Use backend URL for API calls
       const [staffResponse, tenantsResponse] = await Promise.all([
-        fetch('/api/staff'),
-        fetch('/api/tenants')
+        fetch(`${BACKEND_API_URL}/api/staff`),
+        fetch(`${BACKEND_API_URL}/api/tenants`)
       ]);
 
       console.log('Staff response status:', staffResponse.status);
@@ -172,8 +171,8 @@ export default function StaffPage() {
       console.log('Submitting staff payload:', payload);
 
       const url = editingStaff 
-        ? `/api/staff/${editingStaff.id}`
-        : `/api/staff`;
+        ? `${BACKEND_API_URL}/api/staff/${editingStaff.id}`
+        : `${BACKEND_API_URL}/api/staff`;
       
       const method = editingStaff ? 'PUT' : 'POST';
 
@@ -213,7 +212,7 @@ export default function StaffPage() {
     }
 
     try {
-      const response = await fetch(`/api/staff/${staffMember.id}`, {
+      const response = await fetch(`${BACKEND_API_URL}/api/staff/${staffMember.id}`, {
         method: 'DELETE',
       });
 

@@ -40,6 +40,7 @@ import {
 } from '@mui/icons-material';
 import Toast from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import { BACKEND_API_URL } from '../../flavours/apiConfig';
 
 interface RfidReader {
   id: number;
@@ -98,9 +99,9 @@ export default function ReadersPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const readersRes = await fetch(`/api/rfid/readers`);
-      const groupsRes = await fetch(`/api/reader-groups`);
-      const tenantsRes = await fetch('/api/tenants');
+      const readersRes = await fetch(`${BACKEND_API_URL}/api/rfid/readers`);
+      const groupsRes = await fetch(`${BACKEND_API_URL}/api/reader-groups`);
+      const tenantsRes = await fetch(`${BACKEND_API_URL}/api/tenants`);
 
       if (!readersRes.ok) {
         throw new Error('Failed to fetch readers');
@@ -206,8 +207,8 @@ export default function ReadersPage() {
 
       // Use the appropriate URL and method based on whether we're editing or creating
       const url = editingReader 
-        ? `/api/rfid/readers/${editingReader.id}`
-        : `/api/rfid/readers`;
+        ? `${BACKEND_API_URL}/api/rfid/readers/${editingReader.id}`
+        : `${BACKEND_API_URL}/api/rfid/readers`;
       
       const method = editingReader ? 'PUT' : 'POST';
 
@@ -273,7 +274,7 @@ export default function ReadersPage() {
 
     try {
       setDeleting(true);
-      const response = await fetch(`/api/rfid/readers/${readerToDelete.id}`, {
+      const response = await fetch(`${BACKEND_API_URL}/api/rfid/readers/${readerToDelete.id}`, {
         method: 'DELETE',
       });
 

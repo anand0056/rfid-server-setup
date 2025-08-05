@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip } from '@mui/material';
 import axios from 'axios';
+import { BACKEND_API_URL } from '../flavours/apiConfig';
 
 interface DeviceStats {
   cards: {
@@ -77,8 +78,8 @@ export default function DashboardPage() {
         setIsLoading(true);
         setError(null);
         const [statsRes, activityRes] = await Promise.all([
-          axios.get<DeviceStats>('/api/rfid/stats/dashboard'),
-          axios.get('/api/rfid/activity/recent?limit=10')
+          axios.get<DeviceStats>(`${BACKEND_API_URL}/api/rfid/stats/dashboard`),
+          axios.get(`${BACKEND_API_URL}/api/rfid/activity/recent?limit=10`)
         ]);
 
         setDeviceStats(statsRes.data);

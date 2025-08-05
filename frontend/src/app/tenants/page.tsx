@@ -19,8 +19,7 @@ import TenantStats from '../../components/tenants/TenantStats';
 import TenantsTable from '../../components/tenants/TenantsTable';
 import TenantForm from '../../components/tenants/TenantForm';
 import { Tenant, CreateTenantData } from '../../types/tenant';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { BACKEND_API_URL } from '../../flavours/apiConfig';
 
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -45,8 +44,8 @@ export default function TenantsPage() {
       setLoading(true);
       console.log('Fetching tenant data...');
       const [tenantsResponse, statsResponse] = await Promise.all([
-        fetch(`/api/tenants`),
-        fetch(`/api/tenants/stats`),
+        fetch(`${BACKEND_API_URL}/api/tenants`),
+        fetch(`${BACKEND_API_URL}/api/tenants/stats`),
       ]);
 
       const tenantsData = await tenantsResponse.json();
@@ -96,13 +95,13 @@ export default function TenantsPage() {
       if (selectedTenant) {
         // Update existing tenant
         const response = await axios.put(
-          `${API_BASE_URL}/api/tenants/${selectedTenant.id}`,
+          `${BACKEND_API_URL}/api/tenants/${selectedTenant.id}`,
           data
         );
         showSnackbar('Tenant updated successfully', 'success');
       } else {
         // Create new tenant
-        const response = await axios.post(`${API_BASE_URL}/api/tenants`, data);
+        const response = await axios.post(`${BACKEND_API_URL}/api/tenants`, data);
         showSnackbar('Tenant created successfully', 'success');
       }
       
@@ -120,7 +119,7 @@ export default function TenantsPage() {
     if (!tenantToDelete) return;
 
     try {
-      await axios.delete(`${API_BASE_URL}/api/tenants/${tenantToDelete.id}`);
+      await axios.delete(`${BACKEND_API_URL}/api/tenants/${tenantToDelete.id}`);
       showSnackbar('Tenant deleted successfully', 'success');
       setDeleteDialogOpen(false);
       setTenantToDelete(null);

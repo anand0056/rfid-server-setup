@@ -14,6 +14,7 @@ import CardsTable from '../../components/cards/CardsTable';
 import CardForm from '../../components/cards/CardForm';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import Toast from '../../components/Toast';
+import { BACKEND_API_URL } from '../../flavours/apiConfig';
 
 interface RfidCard {
   uid: string;
@@ -90,9 +91,9 @@ export default function CardsPage() {
       console.log('Fetching data...');
       
       const [cardsRes, staffRes, vehiclesRes] = await Promise.all([
-        fetch(`/api/rfid/cards`),
-        fetch(`/api/staff`),
-        fetch(`/api/vehicles`),
+        fetch(`${BACKEND_API_URL}/api/rfid/cards`),
+        fetch(`${BACKEND_API_URL}/api/staff`),
+        fetch(`${BACKEND_API_URL}/api/vehicles`),
       ]);
 
       console.log('Response statuses:', {
@@ -198,8 +199,8 @@ export default function CardsPage() {
       console.log('Submitting card payload:', payload);
 
       const url = editingCard 
-        ? `/api/rfid/cards/${editingCard.uid}`
-        : `/api/rfid/cards`;
+        ? `${BACKEND_API_URL}/api/rfid/cards/${editingCard.uid}`
+        : `${BACKEND_API_URL}/api/rfid/cards`;
       
       const method = editingCard ? 'PUT' : 'POST';
 
@@ -245,7 +246,7 @@ export default function CardsPage() {
 
     try {
       setDeleting(true);
-      const response = await fetch(`/api/rfid/cards/${cardToDelete.uid}`, {
+      const response = await fetch(`${BACKEND_API_URL}/api/rfid/cards/${cardToDelete.uid}`, {
         method: 'DELETE',
       });
 

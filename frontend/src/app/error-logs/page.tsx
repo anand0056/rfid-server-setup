@@ -12,8 +12,7 @@ import {
   ErrorLogQueryParams, 
   ErrorLogResponse 
 } from '../../types/error-log';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { BACKEND_API_URL } from '../../flavours/apiConfig';
 
 export default function ErrorLogsPage() {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
@@ -91,7 +90,7 @@ export default function ErrorLogsPage() {
   // Handle resolve error
   const handleResolveError = async (id: number, resolvedBy: string, notes?: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/error-logs/${id}/resolve`, {
+      const response = await fetch(`${BACKEND_API_URL}/api/error-logs/${id}/resolve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -115,7 +114,7 @@ export default function ErrorLogsPage() {
   // Handle unresolve error
   const handleUnresolveError = async (id: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/error-logs/${id}/unresolve`, {
+      const response = await fetch(`${BACKEND_API_URL}/api/error-logs/${id}/unresolve`, {
         method: 'POST',
       });
 
