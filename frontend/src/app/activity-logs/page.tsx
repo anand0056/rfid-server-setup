@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, SetStateAction } from 'react';
 import {
   Box,
   Typography,
@@ -15,89 +15,125 @@ import ActivityTable from '../../components/logs/ActivityTable';
 import { getTimeZone, formatDateWithTimezone } from '../../utils/timezone';
 import { BACKEND_API_URL } from '../../flavours/apiConfig';
 
+const logsPerPage = 20;
+
+const defaultFilters = {
+  search: '',
+  accessGranted: 'all',
+  cardType: 'all',
+  dateFrom: '',
+  dateTo: '',
+  readerId: '',
+};
+
 const ActivityLogsPage = () => {
-  const [activityLogs, setActivityLogs] = useState([]);
-  const [filteredLogs, setFilteredLogs] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [stats, setStats] = useState({
+    totalToday: 0,
+    successfulToday: 0,
+    failedToday: 0,
+    uniqueUsersToday: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [timezone, setTimezone] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState(defaultFilters);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
-    const fetchActivityLogs = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`${BACKEND_API_URL}/activity-logs`);
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
+        const params = new URLSearchParams({
+          limit: logsPerPage.toString(),
+          offset: ((currentPage - 1) * logsPerPage).toString(),
+          timezone: getTimeZone(),
+        });
+        if (filters.search) params.append('search', filters.search);
+        if (filters.accessGranted !== 'all') params.append('access_granted', filters.accessGranted);
+        if (filters.cardType !== 'all') params.append('card_type', filters.cardType);
+        if (filters.readerId) params.append('reader_id', filters.readerId);
+        if (filters.dateFrom) {
+          const fromDate = new Date(filters.dateFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          params.append('date_from', formatDateWithTimezone(fromDate));
         }
-        const data = await response.json();
-        setActivityLogs(data);
-        setFilteredLogs(data);
-        setTimezone(getTimeZone());
-      } catch (error) {
-        setError(error.message);
+        if (filters.dateTo) {
+          const toDate = new Date(filters.dateTo);
+          toDate.setHours(23, 59, 59, 999);
+          params.append('date_to', formatDateWithTimezone(toDate));
+        }
+        const response = await fetch(`${BACKEND_API_URL}/api/rfid/logs?${params.toString()}`);
+        if (!response.ok) throw new Error('Failed to fetch logs');
+        const result = await response.json();
+        setLogs(result.data || []);
+        setTotalRecords(result.total || 0);
+        setCurrentPage(result.page || 1);
+        setTotalPages(result.totalPages || 1);
+        setError(null);
+
+        // Fetch stats
+        const now = new Date();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const timezone = getTimeZone();
+        const statsParams = new URLSearchParams({
+          date_from: formatDateWithTimezone(today),
+          date_to: formatDateWithTimezone(now),
+          timezone,
+        });
+        const statsResponse = await fetch(`${BACKEND_API_URL}/api/rfid/stats?${statsParams.toString()}`);
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats({
+            totalToday: statsData.totalToday || 0,
+            successfulToday: statsData.successfulToday || 0,
+            failedToday: statsData.failedToday || 0,
+            uniqueUsersToday: statsData.uniqueUsersToday || 0,
+          });
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch logs');
+        setLogs([]);
       } finally {
         setLoading(false);
       }
     };
+    fetchData();
+  }, [filters, currentPage]);
 
-    fetchActivityLogs();
-  }, []);
-
-  const handleFilterChange = (filters) => {
-    const { dateRange, user, actionType } = filters;
-
-    let filtered = activityLogs;
-
-    if (dateRange && dateRange.length === 2) {
-      filtered = filtered.filter((log) => {
-        const logDate = new Date(log.timestamp);
-        return (
-          logDate >= dateRange[0] && logDate <= dateRange[1]
-        );
-      });
-    }
-
-    if (user) {
-      filtered = filtered.filter((log) => log.user === user);
-    }
-
-    if (actionType) {
-      filtered = filtered.filter((log) => log.actionType === actionType);
-    }
-
-    setFilteredLogs(filtered);
+  const handleFilterChange = (field: any, value: any) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+    setCurrentPage(1);
   };
 
-  const handleExport = () => {
-    // Implement export functionality
+  const handlePageChange = (page: SetStateAction<number>) => {
+    setCurrentPage(page);
   };
 
-  if (loading) {
-    return <CircularProgress />;
+  if (loading && logs.length === 0) {
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh"><CircularProgress /></Box>;
   }
-
   if (error) {
     return <Alert severity="error">{error}</Alert>;
   }
 
   return (
-    <Box p={3}>
+    <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
         Activity Logs
       </Typography>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={handleExport}
-        startIcon={<FilterList />}
-        sx={{ mb: 2 }}
-      >
-        Export Logs
-      </Button>
-      <ActivityFilters onFilterChange={handleFilterChange} />
-      <ActivityStats logs={filteredLogs} timezone={timezone} />
-      <ActivityTable logs={filteredLogs} />
+      <ActivityFilters filters={filters} onFilterChange={handleFilterChange} />
+      <ActivityStats stats={stats} />
+      <ActivityTable
+        logs={logs}
+        loading={loading}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalRecords={totalRecords}
+        onPageChange={handlePageChange}
+      />
     </Box>
   );
 };
