@@ -43,7 +43,7 @@ const menuItems = [
   { text: 'Vehicles', icon: <DirectionsCar />, path: '/vehicles' },
   { text: 'RFID Cards', icon: <CreditCard />, path: '/cards' },
   { text: 'Readers', icon: <Router />, path: '/readers' },
-  { text: 'Activity Logs', icon: <Timeline />, path: '/actitivy-logs' },
+  { text: 'Activity Logs', icon: <Timeline />, path: '/activity-logs' },
   { text: 'Error Logs', icon: <ErrorIcon />, path: '/error-logs' },
 ];
 
