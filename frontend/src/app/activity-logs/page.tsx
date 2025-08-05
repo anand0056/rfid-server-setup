@@ -9,11 +9,11 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { FilterList } from '@mui/icons-material';
-import ActivityStats from '../../components/logs/ActivityStats';
-import ActivityFilters from '../../components/logs/ActivityFilters';
-import ActivityTable from '../../components/logs/ActivityTable';
-import { getTimeZone, formatDateWithTimezone } from '../../utils/timezone';
-import { BACKEND_API_URL } from '../../flavours/apiConfig';
+import ActivityStats from '@/components/logs/ActivityStats';
+import ActivityFilters from '@/components/logs/ActivityFilters';
+import ActivityTable from '@/components/logs/ActivityTable';
+import { getTimeZone, formatDateWithTimezone } from '@/utils/timezone';
+import { BACKEND_API_URL } from '@/flavours/apiConfig';
 
 const logsPerPage = 20;
 
