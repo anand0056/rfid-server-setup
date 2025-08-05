@@ -13,7 +13,7 @@ import {
   Alert,
 } from '@mui/material';
 import { Business, CheckCircle, Cancel } from '@mui/icons-material';
-import { useTenant } from '../contexts/TenantContext';
+import { useTenant } from '../context-api/TenantContext';
 
 const TenantSelector: React.FC = () => {
   const { currentTenant, tenants, setCurrentTenant, loading, error } = useTenant();

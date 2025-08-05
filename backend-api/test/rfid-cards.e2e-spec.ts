@@ -5,11 +5,12 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RfidCard } from '../src/entities/rfid-card.entity';
-import { RfidReader } from '../src/entities/rfid-reader.entity';
-import { Staff } from '../src/entities/staff.entity';
-import { Vehicle } from '../src/entities/vehicle.entity';
-import { Tenant } from '../src/entities/tenant.entity';
+import { RfidCard } from '../src/modules/rfid-card/rfid-card.entity';
+import { RfidReader } from '../src/modules/rfid-reader/rfid-reader.entity';
+import { Staff } from '../src/modules/staff/staff.entity';
+import { Vehicle } from '../src/modules/vehicle/vehicle.entity';
+import { Tenant } from '../src/modules/tenant/tenant.entity';
+
 
 describe('RfidCard API (e2e)', () => {
   let app: INestApplication<App>;
@@ -91,11 +92,21 @@ describe('RfidCard API (e2e)', () => {
     await app.init();
 
     // Get repositories for test data setup
-    cardRepository = moduleFixture.get<Repository<RfidCard>>(getRepositoryToken(RfidCard));
-    readerRepository = moduleFixture.get<Repository<RfidReader>>(getRepositoryToken(RfidReader));
-    staffRepository = moduleFixture.get<Repository<Staff>>(getRepositoryToken(Staff));
-    vehicleRepository = moduleFixture.get<Repository<Vehicle>>(getRepositoryToken(Vehicle));
-    tenantRepository = moduleFixture.get<Repository<Tenant>>(getRepositoryToken(Tenant));
+    cardRepository = moduleFixture.get<Repository<RfidCard>>(
+      getRepositoryToken(RfidCard),
+    );
+    readerRepository = moduleFixture.get<Repository<RfidReader>>(
+      getRepositoryToken(RfidReader),
+    );
+    staffRepository = moduleFixture.get<Repository<Staff>>(
+      getRepositoryToken(Staff),
+    );
+    vehicleRepository = moduleFixture.get<Repository<Vehicle>>(
+      getRepositoryToken(Vehicle),
+    );
+    tenantRepository = moduleFixture.get<Repository<Tenant>>(
+      getRepositoryToken(Tenant),
+    );
   });
 
   beforeEach(async () => {
@@ -121,7 +132,7 @@ describe('RfidCard API (e2e)', () => {
     await staffRepository.delete({});
     await vehicleRepository.delete({});
     await tenantRepository.delete({});
-    
+
     await app.close();
   });
 
@@ -144,7 +155,9 @@ describe('RfidCard API (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
-          expect(res.body.every((card: any) => card.tenant_id === 1)).toBe(true);
+          expect(res.body.every((card: any) => card.tenant_id === 1)).toBe(
+            true,
+          );
         });
     });
 
@@ -154,7 +167,9 @@ describe('RfidCard API (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
-          expect(res.body.every((card: any) => card.is_active === true)).toBe(true);
+          expect(res.body.every((card: any) => card.is_active === true)).toBe(
+            true,
+          );
         });
     });
   });
@@ -171,7 +186,7 @@ describe('RfidCard API (e2e)', () => {
           expect(res.body).toHaveProperty('staff');
           expect(res.body).toHaveProperty('vehicles');
           expect(res.body).toHaveProperty('summary');
-          
+
           expect(res.body.tenant).toHaveProperty('id', 1);
           expect(res.body.summary).toHaveProperty('totalCards');
           expect(res.body.summary).toHaveProperty('staffCards');
@@ -195,7 +210,9 @@ describe('RfidCard API (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
-          expect(res.body.every((card: any) => card.staff_id !== null)).toBe(true);
+          expect(res.body.every((card: any) => card.staff_id !== null)).toBe(
+            true,
+          );
         });
     });
 
@@ -221,7 +238,7 @@ describe('RfidCard API (e2e)', () => {
         issued_at: new Date(),
         expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       };
-      
+
       await cardRepository.save(unassignedCard);
 
       return request(app.getHttpServer())
@@ -229,9 +246,11 @@ describe('RfidCard API (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
-          expect(res.body.some((card: any) => 
-            card.staff_id === null && card.vehicle_id === null
-          )).toBe(true);
+          expect(
+            res.body.some(
+              (card: any) => card.staff_id === null && card.vehicle_id === null,
+            ),
+          ).toBe(true);
         });
     });
   });
@@ -244,13 +263,13 @@ describe('RfidCard API (e2e)', () => {
         .expect((res) => {
           expect(res.body).toHaveProperty('cards');
           expect(res.body).toHaveProperty('readers');
-          
+
           expect(res.body.cards).toHaveProperty('total');
           expect(res.body.cards).toHaveProperty('active');
           expect(res.body.cards).toHaveProperty('staff');
           expect(res.body.cards).toHaveProperty('vehicle');
           expect(res.body.cards).toHaveProperty('inactive');
-          
+
           expect(res.body.readers).toHaveProperty('total');
           expect(res.body.readers).toHaveProperty('active');
           expect(res.body.readers).toHaveProperty('inactive');
@@ -319,7 +338,9 @@ describe('RfidCard API (e2e)', () => {
         description: 'New test card',
         is_active: true,
         issued_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        expires_at: new Date(
+          Date.now() + 365 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
       };
 
       return request(app.getHttpServer())
@@ -344,7 +365,9 @@ describe('RfidCard API (e2e)', () => {
         description: 'Vehicle test card',
         is_active: true,
         issued_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        expires_at: new Date(
+          Date.now() + 365 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
       };
 
       return request(app.getHttpServer())
@@ -415,7 +438,7 @@ describe('RfidCard API (e2e)', () => {
         issued_at: new Date(),
         expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       };
-      
+
       await cardRepository.save(deleteTestCard);
 
       return request(app.getHttpServer())
