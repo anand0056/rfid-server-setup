@@ -29,6 +29,7 @@ import { Staff } from './entities/staff.entity';
 import { Vehicle } from './entities/vehicle.entity';
 import { ErrorLog } from './entities/error-log.entity';
 import { HealthController } from './controllers/health.controller';
+import { AuthModule } from './modules/auth.module';
 
 @Module({
   imports: [
@@ -63,6 +64,8 @@ import { HealthController } from './controllers/health.controller';
       Vehicle,
       ErrorLog,
     ]),
+    // Import other modules as needed
+    AuthModule
   ],
   controllers: [
     RfidStatsController,

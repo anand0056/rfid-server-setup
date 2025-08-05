@@ -26,9 +26,11 @@ import {
   Router,
   Timeline,
   Error as ErrorIcon,
-  Business
+  Business,
+  LogoutOutlined
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/context-api/AuthContext';
 
 const drawerWidth = 240;
 
@@ -50,6 +52,7 @@ const menuItems = [
 export default function Navigation({ children }: NavigationProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
+  const { setUser } = useAuth(); // Destructure setUser from AuthContext
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
   const pathname = usePathname();
@@ -66,7 +69,7 @@ export default function Navigation({ children }: NavigationProps) {
   };
 
   const drawer = (
-    <div>
+    <Box>
       <Toolbar>
         <Typography variant="h6" noWrap component="div">
           Binimise RFID Control
@@ -87,7 +90,21 @@ export default function Navigation({ children }: NavigationProps) {
           </ListItem>
         ))}
       </List>
-    </div>
+      <List>
+        <ListItem disablePadding>
+          <ListItemButton onClick={() => {
+            localStorage.removeItem('token');
+            router.push('/auth/login');
+            setUser(null);
+          }}>
+          <ListItemIcon>
+            <LogoutOutlined />
+          </ListItemIcon>
+          <ListItemText primary="Logout" />
+        </ListItemButton>
+      </ListItem>
+      </List>
+    </Box>
   );
 
   return (
