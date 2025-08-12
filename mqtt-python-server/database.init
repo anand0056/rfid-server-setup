@@ -1,0 +1,13 @@
+[docker]
+DB_HOST=database
+DB_USER=rfid
+DB_PASSWORD=rfidpass
+DB_NAME=rfid_db
+MQTT_BROKER=mqtt-broker
+
+[local]
+DB_HOST=localhost
+DB_USER=rfid
+DB_PASSWORD=rfidpass
+DB_NAME=rfid_db
+MQTT_BROKER=localhost
