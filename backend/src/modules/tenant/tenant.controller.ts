@@ -14,7 +14,7 @@ import {
 import { TenantService } from './tenant.service';
 import { Tenant } from './tenant.entity';
 
-@Controller('api/tenants')
+@Controller('tenants')
 export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
 

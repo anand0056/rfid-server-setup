@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { RfidStatsService } from './rfid-stats.service';
 
-@Controller('api/rfid/stats')
+@Controller('rfid/stats')
 export class RfidStatsController {
   private readonly logger = new Logger(RfidStatsController.name);
 

@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies including gcc and python3-dev
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        wget \
         gcc \
         python3-dev \
         netcat-traditional \
@@ -16,6 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
+
+# Set default environment variable
+ENV DOCKER_ENV=1
 
 # Add execute permission to wait script
 RUN chmod +x wait-for-it.sh

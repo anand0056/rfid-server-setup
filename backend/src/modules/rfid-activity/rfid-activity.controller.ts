@@ -1,7 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { RfidActivityService } from './rfid-activity.service';
 
-@Controller('api/rfid/activity')
+@Controller('rfid/activity')
 export class RfidActivityController {
   constructor(private readonly rfidActivityService: RfidActivityService) {}
 

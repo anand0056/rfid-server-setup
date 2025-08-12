@@ -101,7 +101,7 @@ Desktop.ini
 
 # NestJS specific
 /dist
-/backend-api/dist
+/backend/dist
 **/*.js.map
 
 # Next.js specific

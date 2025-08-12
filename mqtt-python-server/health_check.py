@@ -6,6 +6,7 @@ from datetime import datetime
 import psutil
 import paho.mqtt.client as mqtt
 import logging
+import mysql.connector
 
 # Setup logging
 logging.basicConfig(
@@ -16,7 +17,23 @@ logger = logging.getLogger(__name__)
 
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
+    @staticmethod
+    def ensure_db_connection():
+        try:
+            conn = mysql.connector.connect(
+                host="rfid_mysql",
+                user="root",
+                password="",
+                database="rfid_db",
+                connect_timeout=5
+            )
+            conn.close()
+            return True
+        except Exception as e:
+            return False
+
     def do_GET(self):
+        global client
         if self.path == '/health':
             try:
                 # Get process info
@@ -24,7 +41,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
                 memory_info = process.memory_info()
 
                 # Check MySQL connection
-                db_status = "ok" if ensure_db_connection() else "error"
+                db_status = "ok" if self.ensure_db_connection() else "error"
 
                 # Check MQTT connection
                 mqtt_status = "ok" if client and client.is_connected() else "error"
@@ -62,12 +79,17 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
+    def do_HEAD(self):
+        if self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
 def start_health_server(port=8080):
     server = HTTPServer(('', port), HealthCheckHandler)
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.daemon = True
     server_thread.start()
     logger.info(f"Health check server started on port {port}")
-
-# Add this to your main.py after mqtt client setup
-start_health_server()

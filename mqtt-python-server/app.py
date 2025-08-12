@@ -22,6 +22,31 @@ cursor = None
 client = None
 running = True
 
+def read_init_file(section):
+    """Read configuration from database.init file"""
+    config = {}
+    current_section = None
+    
+    try:
+        with open('database.init', 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                    
+                if line.startswith('[') and line.endswith(']'):
+                    current_section = line[1:-1]
+                    continue
+                    
+                if current_section == section and '=' in line:
+                    key, value = line.split('=', 1)
+                    config[key.strip()] = value.strip()
+                    
+        return config
+    except FileNotFoundError:
+        logger.error("database.init file not found")
+        return {}
+
 def signal_handler(signum, frame):
     """Handle shutdown signals gracefully"""
     global running
@@ -43,27 +68,31 @@ def connect_to_db():
     retry_count = 0
     max_retries = 5
     
+    # Load configuration based on environment
+    env = 'docker' if os.getenv('DOCKER_ENV') else 'local'
+    logger.info(f"Running in {env} environment")
+    config = read_init_file(env)
+    
     while retry_count < max_retries and running:
         try:
             db = mysql.connector.connect(
-                host=os.getenv("DB_HOST", "localhost"),
-                user=os.getenv("DB_USER", "root"),
-                password=os.getenv("DB_PASSWORD", ""),
-                database=os.getenv("DB_NAME", "rfid_db"),
-                autocommit=True,
-                charset='utf8mb4'
+                host=config.get('DB_HOST', 'localhost'),
+                port=int(os.getenv("DB_PORT", "3306")),  # ✅ Cast port to int
+                user=config.get('DB_USER', 'rfid'),
+                password=config.get('DB_PASSWORD', 'rfidpass'),
+                database=config.get('DB_NAME', 'rfid_db')
             )
             cursor = db.cursor()
-            logger.info("Connected to database successfully")
+            logger.info("Successfully connected to the database.")
             return True
         except mysql.connector.Error as err:
             retry_count += 1
-            logger.error(f"Database connection failed (attempt {retry_count}): {err}")
+            logger.error("Database connection failed (attempt %d): %s", retry_count, err)
             if retry_count < max_retries:
-                time.sleep(5)  # Wait 5 seconds before retry
-    
-    logger.error("Failed to connect to database after maximum retries")
-    return False
+                time.sleep(5)
+            else:
+                logger.error("Failed to connect to database after maximum retries")
+                return False
 
 def ensure_db_connection():
     """Check if the database connection is alive, and reconnect if necessary"""
@@ -491,7 +520,9 @@ def main():
     client.on_disconnect = on_disconnect
     
     # Connect to MQTT broker with retry logic
-    broker_host = os.getenv("MQTT_BROKER", "localhost")
+    env = 'docker' if os.getenv('DOCKER_ENV') else 'local'
+    config = read_init_file(env)
+    broker_host = config.get("MQTT_BROKER", "localhost")
     broker_port = int(os.getenv("MQTT_PORT", "1883"))
     
     retry_count = 0
@@ -529,7 +560,7 @@ def main():
 if __name__ == "__main__":
     try:
         # Start health check server
-        start_health_server(port=8081)
+        start_health_server(port=8080)
         
         # Connect to database
         if not connect_to_db():
@@ -542,7 +573,9 @@ if __name__ == "__main__":
         client.on_message = on_message
 
         # Connect to MQTT broker
-        mqtt_host = os.getenv("MQTT_BROKER", "localhost")
+        env = 'docker' if os.getenv('DOCKER_ENV') else 'local'
+        config = read_init_file(env)
+        mqtt_host = config.get("MQTT_BROKER", "localhost")
         client.connect(mqtt_host, 1883, 60)
 
         # Start MQTT loop

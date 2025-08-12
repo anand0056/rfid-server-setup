@@ -27,7 +27,8 @@ import {
   Timeline,
   Error as ErrorIcon,
   Business,
-  LogoutOutlined
+  LogoutOutlined,
+  HealthAndSafety
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context-api/AuthContext';
@@ -47,6 +48,7 @@ const menuItems = [
   { text: 'Readers', icon: <Router />, path: '/readers' },
   { text: 'Activity Logs', icon: <Timeline />, path: '/activity-logs' },
   { text: 'Error Logs', icon: <ErrorIcon />, path: '/error-logs' },
+  { text: 'System Health', icon: <HealthAndSafety />, path: '/health' },
 ];
 
 export default function Navigation({ children }: NavigationProps) {

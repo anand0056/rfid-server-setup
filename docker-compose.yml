@@ -10,17 +10,20 @@ services:
     depends_on:
       frontend:
         condition: service_healthy
-      backend-api:
+      backend:
         condition: service_healthy
     networks:
       - rfid-net
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/html:/usr/share/nginx/html:ro   # (optional) if you serve static files
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  mysql:
+  database:
     image: mysql:8.0
     container_name: rfid_mysql
     restart: unless-stopped
@@ -29,22 +32,24 @@ services:
       MYSQL_DATABASE: rfid_db
       MYSQL_USER: rfid
       MYSQL_PASSWORD: rfidpass
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     volumes:
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
       - mysql_data:/var/lib/mysql
     # Remove port mapping as it's only needed internally
+    ports:
+      - "3306:3306"  # Expose MySQL port for external access
     expose:
-      - "3306:3306"
+      - "3306"
     networks:
       - rfid-net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prfidpass", "-urfid"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
 
-  mosquitto:
+
+  mqtt-broker:
     image: eclipse-mosquitto:2
     container_name: mqtt_broker
     restart: unless-stopped
@@ -55,11 +60,14 @@ services:
     # Keep MQTT port exposed for external MQTT clients
     ports:
       - "1883:1883"
-    # WebSocket port only exposed internally
-    expose:
-      - "9001"
+      - "9001:9001"
     networks:
       - rfid-net
+    environment:
+      DB_HOST: database
+      DB_USER: rfid
+      DB_PASSWORD: rfidpass
+      DB_NAME: rfid_db
     healthcheck:
       test: ["CMD-SHELL", "timeout 5 mosquitto_sub -t '$$SYS/#' -C 1 || exit 1"]
       interval: 10s
@@ -71,43 +79,48 @@ services:
     container_name: mqtt_client
     restart: unless-stopped
     depends_on:
-      mysql:
+      database:
         condition: service_healthy
-      mosquitto:
+      mqtt-broker:
         condition: service_healthy
     environment:
-      DB_HOST: mysql
+      DB_HOST: database
       DB_USER: rfid
       DB_PASSWORD: rfidpass
       DB_NAME: rfid_db
       MQTT_BROKER: mosquitto
+      DB_PORT: "3306"
+      MQTT_PORT: "1883"
       PYTHONUNBUFFERED: 1
+      DOCKER_ENV: "1"
     networks:
       - rfid-net
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
-      interval: 30s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 20s
       timeout: 10s
-      retries: 3
+      retries: 10
     expose:
-      - "8081"  # Health check port
+      - "8080"  # Health check port
+    ports:
+      - "8080:8080"
 
-  backend-api:
-    build: ./backend-api
+  backend:
+    build: ./backend
     container_name: nest_api
     restart: unless-stopped
     depends_on:
-      mysql:
+      database:
         condition: service_healthy
-    # Remove port mapping as it's only needed internally
-    expose:
-      - "5000"
+    ports:
+      - "5000:5000"  # Expose API port for external access
     environment:
-      DB_HOST: mysql
+      DB_HOST: database
       DB_USER: rfid
       DB_PASSWORD: rfidpass
       DB_NAME: rfid_db
       PORT: 5000
+      DB_PORT: 3306
       NODE_ENV: production
     networks:
       - rfid-net
@@ -128,18 +141,19 @@ services:
     container_name: nextjs_app
     restart: unless-stopped
     depends_on:
-      backend-api:
+      backend:
         condition: service_healthy
     # Remove port mapping as it's only needed internally
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"  # Expose Next.js app port for external access
     environment:
-      NEXT_PUBLIC_API_URL: "/api"  # Updated to use Nginx path
+      PORT: 3000
       NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://backend:5000
     networks:
       - rfid-net
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/next-api/docker-health"]
       interval: 30s
       timeout: 10s
       retries: 3

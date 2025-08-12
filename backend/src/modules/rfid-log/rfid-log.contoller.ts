@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { RfidLogService } from './rfid-log.service';
 
-@Controller('api/rfid/logs')
+@Controller('rfid/logs')
 export class RfidLogController {
   constructor(private readonly rfidLogService: RfidLogService) {}
 

@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { RfidReaderService } from './rfid-reader.service';
 
-@Controller('api/rfid/readers')
+@Controller('rfid/readers')
 export class RfidReaderController {
   constructor(private readonly rfidReaderService: RfidReaderService) {}
 

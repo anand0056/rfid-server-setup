@@ -42,7 +42,7 @@ export default function ErrorLogsPage() {
         }
       });
 
-      const response = await fetch(`/api/error-logs?${queryParams}`);
+      const response = await fetch(`${BACKEND_API_URL}/api/error-logs?${queryParams}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -65,7 +65,7 @@ export default function ErrorLogsPage() {
   // Fetch stats
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/error-logs/stats');
+      const response = await fetch(`${BACKEND_API_URL}/api/error-logs/stats`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

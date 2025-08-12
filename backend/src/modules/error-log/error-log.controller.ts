@@ -10,7 +10,7 @@ import {
 import { ErrorLogService } from './error-log.service';
 import { ErrorLogQueryParams } from './error-log.service';
 
-@Controller('api/error-logs')
+@Controller('error-logs')
 export class ErrorLogController {
   constructor(private readonly errorLogService: ErrorLogService) {}
 

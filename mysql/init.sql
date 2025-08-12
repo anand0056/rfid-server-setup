@@ -11,6 +11,20 @@ FLUSH PRIVILEGES;
 -- STEP 1: Create tables (no FKs yet)
 -- ----------------------------
 
+CREATE TABLE IF NOT EXISTS init_flag (
+    id INT PRIMARY KEY,
+    has_initialized BOOLEAN
+);
+
+-- -- exit if init_flag exists
+-- SELECT COUNT(*) INTO @flag_exists FROM init_flag WHERE id = 1;
+-- IF @flag_exists > 0 THEN
+--     SELECT 'Database already initialized. Exiting...' AS message;
+--     LEAVE;
+-- END IF;
+-- Insert flag row
+INSERT IGNORE INTO init_flag (id, has_initialized) VALUES (1, true);
+
 CREATE TABLE tenants (
     id INT AUTO_INCREMENT PRIMARY KEY,
     tenant_code VARCHAR(50) UNIQUE NOT NULL,

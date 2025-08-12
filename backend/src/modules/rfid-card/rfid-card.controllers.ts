@@ -9,10 +9,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { RfidCardService } from './rfid-cards.service';
-import { RfidCard } from './rfid-card.entity';
-import { RfidReader } from '../rfid-reader/rfid-reader.entity';
 
-@Controller('api/rfid/cards')
+@Controller('rfid/cards')
 export class RfidCardController {
   constructor(private readonly rfidCardService: RfidCardService) {}
 

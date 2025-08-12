@@ -14,7 +14,7 @@ import {
 import { StaffService } from './staff.service';
 import { Staff } from './staff.entity';
 
-@Controller('api/staff')
+@Controller('staff')
 export class StaffController {
   constructor(private readonly staffService: StaffService) {}
 

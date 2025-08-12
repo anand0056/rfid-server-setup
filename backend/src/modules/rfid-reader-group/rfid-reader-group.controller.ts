@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { RfidReaderGroupService } from './rfid-reader-group.service';
 
-@Controller('api/reader-groups')
+@Controller('reader-groups')
 export class RfidReaderGroupController {
   constructor(private readonly readerGroupService: RfidReaderGroupService) {}
 

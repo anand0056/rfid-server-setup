@@ -13,7 +13,7 @@ import {
 import { VehicleService } from './vehicle.service';
 import { Vehicle } from './vehicle.entity';
 
-@Controller('api/vehicles')
+@Controller('vehicles')
 export class VehicleController {
   constructor(private readonly vehicleService: VehicleService) {}
 
