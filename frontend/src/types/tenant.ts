@@ -2,6 +2,7 @@ export interface Tenant {
   id: number;
   name: string;
   tenant_code: string;
+  group_id?: number | null;
   description?: string;
   contact_email?: string;
   contact_phone?: string;
@@ -26,6 +27,7 @@ export interface TenantStats {
 export interface CreateTenantData {
   name: string;
   tenant_code: string;
+  group_id?: number | null;
   description?: string;
   contact_email?: string;
   contact_phone?: string;

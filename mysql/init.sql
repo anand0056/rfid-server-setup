@@ -33,6 +33,7 @@ CREATE TABLE tenants (
     contact_email VARCHAR(100),
     contact_phone VARCHAR(20),
     address TEXT,
+    group_id INT DEFAULT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     subscription_plan VARCHAR(50) DEFAULT 'basic',
     max_readers INT DEFAULT 10,

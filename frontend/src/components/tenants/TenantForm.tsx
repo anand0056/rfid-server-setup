@@ -23,16 +23,17 @@ interface TenantFormProps {
   loading?: boolean;
 }
 
-export default function TenantForm({ 
-  open, 
-  onClose, 
-  onSubmit, 
-  tenant, 
-  loading = false 
+export default function TenantForm({
+  open,
+  onClose,
+  onSubmit,
+  tenant,
+  loading = false
 }: TenantFormProps) {
   const [formData, setFormData] = useState<CreateTenantData>({
     name: '',
     tenant_code: '',
+    group_id: undefined,
     description: '',
     contact_email: '',
     contact_phone: '',
@@ -48,6 +49,7 @@ export default function TenantForm({
       setFormData({
         name: tenant.name || '',
         tenant_code: tenant.tenant_code || '',
+        group_id: (tenant as any).group_id ?? undefined,
         description: tenant.description || '',
         contact_email: tenant.contact_email || '',
         contact_phone: tenant.contact_phone || '',
@@ -59,6 +61,7 @@ export default function TenantForm({
       setFormData({
         name: '',
         tenant_code: '',
+        group_id: undefined,
         description: '',
         contact_email: '',
         contact_phone: '',
@@ -73,9 +76,10 @@ export default function TenantForm({
   const handleChange = (field: keyof CreateTenantData) => (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const value = field === 'is_active' ? event.target.checked : event.target.value;
+    const raw = field === 'is_active' ? (event.target as HTMLInputElement).checked : event.target.value;
+    const value: any = field === 'group_id' ? (raw === '' ? undefined : Number(raw)) : raw;
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -97,6 +101,12 @@ export default function TenantForm({
 
     if (formData.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
       newErrors.contact_email = 'Please enter a valid email address';
+    }
+
+    if (formData.group_id !== undefined && formData.group_id !== null) {
+      if (!Number.isInteger(formData.group_id) || formData.group_id <= 0) {
+        newErrors.group_id = 'Group ID must be a positive integer';
+      }
     }
 
     setErrors(newErrors);
@@ -130,7 +140,7 @@ export default function TenantForm({
         <DialogTitle>
           {tenant ? 'Edit Tenant' : 'Add New Tenant'}
         </DialogTitle>
-        
+
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -144,7 +154,7 @@ export default function TenantForm({
                 required
               />
             </Grid>
-            
+
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -157,7 +167,19 @@ export default function TenantForm({
                 disabled={!!tenant} // Don't allow editing tenant code
               />
             </Grid>
-            
+
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Group ID"
+                type="number"
+                value={formData.group_id ?? ''}
+                onChange={handleChange('group_id')}
+                error={!!errors.group_id}
+                helperText={errors.group_id || 'Optional external group id used for syncing'}
+              />
+            </Grid>
+
             <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
@@ -168,7 +190,7 @@ export default function TenantForm({
                 rows={2}
               />
             </Grid>
-            
+
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -180,7 +202,7 @@ export default function TenantForm({
                 helperText={errors.contact_email}
               />
             </Grid>
-            
+
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -189,7 +211,7 @@ export default function TenantForm({
                 onChange={handleChange('contact_phone')}
               />
             </Grid>
-            
+
             <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
@@ -200,7 +222,7 @@ export default function TenantForm({
                 rows={2}
               />
             </Grid>
-            
+
             <Grid size={{ xs: 12 }}>
               <FormControlLabel
                 control={
@@ -214,14 +236,14 @@ export default function TenantForm({
             </Grid>
           </Grid>
         </DialogContent>
-        
+
         <DialogActions>
           <Button onClick={handleClose} disabled={loading}>
             Cancel
           </Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
+          <Button
+            type="submit"
+            variant="contained"
             disabled={loading}
           >
             {loading ? 'Saving...' : (tenant ? 'Update' : 'Create')}

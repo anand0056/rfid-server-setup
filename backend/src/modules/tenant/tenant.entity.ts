@@ -48,6 +48,10 @@ export class Tenant {
   @Column({ default: 1000 })
   max_cards: number;
 
+  // Optional group id used by external systems for syncing
+  @Column({ type: 'int', nullable: true })
+  group_id: number | null;
+
   @CreateDateColumn()
   created_at: Date;
 
