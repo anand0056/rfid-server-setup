@@ -4,6 +4,10 @@ DB_USER=rfid
 DB_PASSWORD=rfidpass
 DB_NAME=rfid_db
 MQTT_BROKER=mqtt-broker
+DB_HOST2=sql.binimise.com
+DB_USER2=root
+DB_PASSWORD2=prodbinimise
+DB_NAME2=binimise_prod
 
 [local]
 DB_HOST=localhost
@@ -11,3 +15,7 @@ DB_USER=rfid
 DB_PASSWORD=rfidpass
 DB_NAME=rfid_db
 MQTT_BROKER=localhost
+DB_HOST2=database
+DB_USER2=rfid
+DB_PASSWORD2=rfidpass
+DB_NAME2=rfid_db

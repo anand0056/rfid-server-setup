@@ -21,6 +21,8 @@ db = None
 cursor = None
 client = None
 running = True
+db2 = None
+cursor2 = None
 
 def read_init_file(section):
     """Read configuration from database.init file"""
@@ -56,6 +58,8 @@ def signal_handler(signum, frame):
         client.disconnect()
     if db:
         db.close()
+    if db2:
+        db2.close()
     sys.exit(0)
 
 # Register signal handlers
@@ -64,7 +68,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 # Database connection with retry logic
 def connect_to_db():
-    global db, cursor
+    global db, cursor, db2, cursor2
     retry_count = 0
     max_retries = 5
     
@@ -73,6 +77,7 @@ def connect_to_db():
     logger.info(f"Running in {env} environment")
     config = read_init_file(env)
     
+    # Connect to first database
     while retry_count < max_retries and running:
         try:
             db = mysql.connector.connect(
@@ -83,8 +88,8 @@ def connect_to_db():
                 database=config.get('DB_NAME', 'rfid_db')
             )
             cursor = db.cursor()
-            logger.info("Successfully connected to the database.")
-            return True
+            logger.info("Successfully connected to the first database.")
+            break
         except mysql.connector.Error as err:
             retry_count += 1
             logger.error("Database connection failed (attempt %d): %s", retry_count, err)
@@ -93,37 +98,74 @@ def connect_to_db():
             else:
                 logger.error("Failed to connect to database after maximum retries")
                 return False
+    
+    # Connect to second database
+    retry_count = 0
+    while retry_count < max_retries and running:
+        try:
+            db2 = mysql.connector.connect(
+                host=config.get('DB_HOST2', 'localhost'),
+                port=int(os.getenv("DB_PORT2", "3306")),  # ✅ Cast port to int
+                user=config.get('DB_USER2', 'rfid'),
+                password=config.get('DB_PASSWORD2', 'rfidpass'),
+                database=config.get('DB_NAME2', 'rfid_db2')
+            )
+            cursor2 = db2.cursor()
+            logger.info("Successfully connected to the second database.")
+            return True
+        except mysql.connector.Error as err:
+            retry_count += 1
+            logger.error("Database2 connection failed (attempt %d): %s", retry_count, err)
+            if retry_count < max_retries:
+                time.sleep(5)
+            else:
+                logger.error("Failed to connect to database2 after maximum retries")
+                return False
 
 def ensure_db_connection():
-    """Check if the database connection is alive, and reconnect if necessary"""
-    global db, cursor
-    
+    """Check if the database connections are alive, and reconnect if necessary"""
+    global db, cursor, db2, cursor2
+
     try:
-        # Check if connection is established
+        # Check if first database connection is established
         if db is None or cursor is None:
-            logger.warning("Database connection not established, connecting...")
+            logger.warning("First database connection not established, connecting...")
             return connect_to_db()
-            
-        # Check if connection is alive by executing a simple query
+        
+        # Check if second database connection is established
+        if db2 is None or cursor2 is None:
+            logger.warning("Second database connection not established, connecting...")
+            return connect_to_db()
+        
+        # Check if both connections are alive by executing simple queries
         cursor.execute("SELECT 1")
         cursor.fetchone()
+        
+        cursor2.execute("SELECT 1")
+        cursor2.fetchone()
+        
         return True
     except mysql.connector.Error as err:
         logger.warning(f"Database connection lost: {err}. Reconnecting...")
         try:
-            # Close existing connection if it exists
+            # Close existing connections if they exist
             if db:
                 try:
                     db.close()
+                except:
+                    pass
+            if db2:
+                try:
+                    db2.close()
                 except:
                     pass
             
             # Reconnect
             return connect_to_db()
         except Exception as e:
-            logger.error(f"Failed to reconnect to database: {e}")
+            logger.error(f"Failed to reconnect to databases: {e}")
             return False
-
+        
 def log_error(error_type, error_message, raw_data=None, source_topic=None, stack_trace=None, tenant_id=None):
     """Log errors to the error_logs table, ensuring all data is saved"""
     if not ensure_db_connection():
@@ -236,6 +278,15 @@ def validate_binimise_format(data):
     if not isinstance(data['tagID'], str) or not data['tagID'].strip():
         return False, "tagID must be a non-empty string"
     
+    # Validate that tagNum matches the number of tags in tagID
+    tag_ids = [tag.strip() for tag in data['tagID'].split(',') if tag.strip()]
+    if len(tag_ids) != data['tagNum']:
+        return False, f"tagNum ({data['tagNum']}) doesn't match actual number of tags ({len(tag_ids)})"
+    
+    # Validate that all tag IDs are non-empty
+    if any(not tag for tag in tag_ids):
+        return False, "One or more tag IDs are empty"
+    
     return True, "Valid format"
 
 def get_tenant_for_card(card_uid):
@@ -265,16 +316,37 @@ def get_tenant_for_reader(reader_id):
     
     try:
         cursor.execute(
-            "SELECT tenant_id FROM rfid_readers WHERE id = %s", 
+            "SELECT tenant_id, group_id FROM rfid_readers WHERE reader_id = %s", 
             (reader_id,)
         )
         result = cursor.fetchone()
         if result:
-            return result[0]
-        return None
+            return result[0], result[1]  # Return both tenant_id and group_id
+        return None, None
     except Exception as e:
-        logger.error(f"Error getting tenant for reader {reader_id}: {e}")
-        return None
+        logger.error(f"Error getting tenant, group for reader {reader_id}: {e}")
+        return None, None
+
+def save_successful_scan_to_db2(device_id, tag_id, tenant_id, group_id, scan_time):
+    """Save successfully decoded message to second database"""
+    if not ensure_db_connection():
+        logger.error("Cannot save to second database - connection not available")
+        return False
+    
+    try:
+        cursor2.execute("""
+            INSERT INTO rfid_scan_entry 
+            (rfid_device_unique_id, rfid_tag_unique_id, tenant_id, group_id, scan_time)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (device_id, tag_id, tenant_id, group_id, scan_time))
+        
+        db2.commit()
+        logger.info(f"💾 Saved successful scan to DB2: device={device_id}, tag={tag_id}, tenant={tenant_id}, group={group_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to save scan to second database: {e}")
+        return False
 
 # Error type constants
 ERROR_MQTT_PARSE = 'mqtt_parse_error'
@@ -331,14 +403,19 @@ def process_rfid_scan(payload, topic):
             return
 
         # At this point, we have valid data with all required fields
-        card_uid = data['tagID']
         reader_id = data['deviceID']
         device_sn = data['deviceSn']
+        tag_num = data['tagNum']
         scan_time = datetime.now()
+
+        # Parse multiple tag IDs from the comma-separated string
+        tag_ids = [tag.strip() for tag in data['tagID'].split(',') if tag.strip()]
+        
+        logger.info(f"📊 Processing {tag_num} tags: {tag_ids}")
 
         # Get reader information
         cursor.execute("""
-            SELECT r.tenant_id, r.id, r.name, r.location
+            SELECT r.tenant_id, r.id, r.name, r.location, r.group_id
             FROM rfid_readers r 
             WHERE r.reader_id = %s
         """, (reader_id,))
@@ -356,76 +433,105 @@ def process_rfid_scan(payload, topic):
             return
 
         tenant_id = reader_info[0]
+        group_id = reader_info[4] if reader_info[4] is not None else 1  # Default to group 1 if null
 
-        # Get card information
-        cursor.execute("""
-            SELECT c.is_active, c.tenant_id, 
-                   COALESCE(s.first_name, v.owner_name) as owner_name,
-                   CASE 
-                     WHEN s.id IS NOT NULL THEN 'staff'
-                     WHEN v.id IS NOT NULL THEN 'vehicle'
-                     ELSE c.card_type
-                   END as type
-            FROM rfid_cards c
-            LEFT JOIN staff s ON c.staff_id = s.id
-            LEFT JOIN vehicles v ON c.vehicle_id = v.id
-            WHERE c.card_uid = %s
-        """, (card_uid,))
-        card_result = cursor.fetchone()
+        # Process each tag individually
+        processed_tags = 0
+        for card_uid in tag_ids:
+            try:
+                # Get card information
+                cursor.execute("""
+                    SELECT c.is_active, c.tenant_id, 
+                           COALESCE(s.first_name, v.owner_name) as owner_name,
+                           CASE 
+                             WHEN s.id IS NOT NULL THEN 'staff'
+                             WHEN v.id IS NOT NULL THEN 'vehicle'
+                             ELSE c.card_type
+                           END as type
+                    FROM rfid_cards c
+                    LEFT JOIN staff s ON c.staff_id = s.id
+                    LEFT JOIN vehicles v ON c.vehicle_id = v.id
+                    WHERE c.card_uid = %s
+                """, (card_uid,))
+                card_result = cursor.fetchone()
 
-        if not card_result:
-            # Log unknown card to error_logs
-            log_error(
-                ERROR_UNKNOWN_CARD,
-                f"Card not found in database: {card_uid}",
-                raw_data,
-                topic,
-                tenant_id=tenant_id
-            )
-            is_authorized = False
-            card_type = 'unknown'
-            owner_name = None
-        else:
-            is_authorized = card_result[0]
-            card_type = card_result[3]
-            owner_name = card_result[2]
+                if not card_result:
+                    # Log unknown card to error_logs
+                    log_error(
+                        ERROR_UNKNOWN_CARD,
+                        f"Card not found in database: {card_uid}",
+                        raw_data,
+                        topic,
+                        tenant_id=tenant_id
+                    )
+                    is_authorized = False
+                    card_type = 'unknown'
+                    owner_name = None
+                else:
+                    is_authorized = card_result[0]
+                    card_type = card_result[3]
+                    owner_name = card_result[2]
 
-        # Insert the validated scan into rfid_logs
+                # Insert the validated scan into rfid_logs
+                cursor.execute("""
+                    INSERT INTO rfid_logs (
+                        card_uid, reader_id, is_authorized, timestamp, tenant_id, 
+                        event_type, raw_data, notes
+                    ) VALUES (%s, %s, %s, %s, %s, 'scan', %s, %s)
+                """, (
+                    card_uid, 
+                    reader_id, 
+                    is_authorized,
+                    scan_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    tenant_id,
+                    raw_data,
+                    f"Card Type: {card_type}, Owner: {owner_name if owner_name else 'Unknown'}, Batch scan: {processed_tags + 1}/{tag_num}"
+                ))
+                
+                # Commit first database transaction
+                db.commit()
+                
+                # Save successful scan to second database
+                save_successful_scan_to_db2(
+                    device_id=reader_id,
+                    tag_id=card_uid,
+                    tenant_id=tenant_id,
+                    group_id=group_id,
+                    scan_time=scan_time.strftime('%Y-%m-%d %H:%M:%S')
+                )
+                
+                processed_tags += 1
+                logger.info(f"✅ Successfully logged scan {processed_tags}/{tag_num} for card {card_uid} at reader {reader_id}")
+
+            except Exception as e:
+                # Log database errors for this specific card but continue with others
+                log_error(
+                    ERROR_DATABASE,
+                    f"Failed to save scan for card {card_uid}: {str(e)}",
+                    raw_data,
+                    topic,
+                    tenant_id=tenant_id
+                )
+                continue
+
+        # Update reader heartbeat once after processing all tags
         try:
-            cursor.execute("""
-                INSERT INTO rfid_logs (
-                    card_uid, reader_id, is_authorized, timestamp, tenant_id, 
-                    event_type, raw_data, notes
-                ) VALUES (%s, %s, %s, %s, %s, 'scan', %s, %s)
-            """, (
-                card_uid, 
-                reader_id, 
-                is_authorized,
-                scan_time.strftime('%Y-%m-%d %H:%M:%S'),
-                tenant_id,
-                raw_data,
-                f"Card Type: {card_type}, Owner: {owner_name if owner_name else 'Unknown'}"
-            ))
-            
-            # Update reader heartbeat
             cursor.execute("""
                 UPDATE rfid_readers 
                 SET last_heartbeat = %s, is_online = TRUE
                 WHERE reader_id = %s
             """, (scan_time, reader_id))
-
-            logger.info(f"✅ Successfully logged scan for card {card_uid} at reader {reader_id}")
-
+            
+            logger.info(f"💓 Updated reader {reader_id} heartbeat after processing {processed_tags}/{tag_num} tags")
+            
         except Exception as e:
-            # Log database errors but don't continue
             log_error(
                 ERROR_DATABASE,
-                f"Failed to save scan: {str(e)}",
+                f"Failed to update reader heartbeat: {str(e)}",
                 raw_data,
                 topic,
                 tenant_id=tenant_id
             )
-            return
 
     except Exception as e:
         # Log any unexpected errors
@@ -440,13 +546,13 @@ def process_rfid_scan(payload, topic):
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logger.info("Connected to MQTT broker")
-        # Subscribe to the new binimise/rfid topic
-        client.subscribe("binimise/rfid")
+        # Subscribe to the correct binimise RFID topic
+        client.subscribe("binimise/rfid/RunData")
         # Keep legacy topics for backward compatibility
         client.subscribe("rfid/scan")
         client.subscribe("rfid/+/scan")  # Subscribe to reader-specific topics
         client.subscribe("rfid/heartbeat")
-        logger.info("Subscribed to MQTT topics: binimise/rfid, rfid/scan, rfid/+/scan, rfid/heartbeat")
+        logger.info("Subscribed to MQTT topics: binimise/rfid/RunData, rfid/scan, rfid/+/scan, rfid/heartbeat")
     else:
         logger.error(f"Failed to connect to MQTT broker: {rc}")
 
@@ -458,8 +564,8 @@ def on_message(client, userdata, msg):
         return
     
     try:
-        if msg.topic == "binimise/rfid":
-            # Handle new binimise RFID format
+        if msg.topic == "binimise/rfid/RunData":
+            # Handle binimise RFID RunData format
             process_rfid_scan(msg.payload, msg.topic)
         elif msg.topic.startswith("rfid/") and msg.topic.endswith("/scan"):
             process_rfid_scan(msg.payload, msg.topic)
@@ -470,8 +576,8 @@ def on_message(client, userdata, msg):
             data = json.loads(msg.payload.decode())
             reader_id = data.get('reader_id')
             if reader_id:
-                # Try to determine the tenant_id for this reader
-                tenant_id = get_tenant_for_reader(reader_id)
+                # Try to determine the tenant_id and group_id for this reader
+                tenant_id, group_id = get_tenant_for_reader(reader_id)
                 
                 cursor.execute("""
                     UPDATE rfid_readers 
@@ -490,7 +596,7 @@ def on_message(client, userdata, msg):
                     except Exception as e:
                         logger.error(f"Could not auto-create reader {reader_id} from heartbeat: {e}")
                 else:
-                    logger.info(f"💓 Updated heartbeat for reader: {reader_id} - Tenant: {tenant_id if tenant_id else 'Unknown'}")
+                    logger.info(f"💓 Updated heartbeat for reader: {reader_id} - Tenant: {tenant_id if tenant_id else 'Unknown'}, Group: {group_id if group_id else 'Unknown'}")
     except Exception as e:
         logger.error(f"Error handling message: {e}")
         import traceback
@@ -556,6 +662,8 @@ def main():
             client.disconnect()
         if db:
             db.close()
+        if db2:
+            db2.close()
 
 if __name__ == "__main__":
     try:
