@@ -1,31 +1,50 @@
-FROM python:3.10-slim
+# Build stage
+FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
-# Install system dependencies including gcc and python3-dev
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        wget \
+# Install build dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         gcc \
         python3-dev \
-        netcat-traditional \
-    && rm -rf /var/lib/apt/lists/*
+        build-essential && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
+# Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Production stage
+FROM python:3.10-slim AS runner
+
+WORKDIR /app
+
+# Install only runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        wget \
+        netcat-traditional && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get autoremove -y && \
+    apt-get clean
+
+# Create a non-root user
+RUN useradd -m --uid 1001 appuser
+
+# Copy Python packages from builder
+COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application code
-COPY . .
-
-# Set default environment variable
-ENV DOCKER_ENV=1
+COPY --chown=appuser:appuser . .
 
 # Add execute permission to wait script
 RUN chmod +x wait-for-it.sh
 
-# Create a non-root user
-RUN useradd -m appuser && chown -R appuser /app
+# Make sure the local bin is in PATH
+ENV PATH=/home/appuser/.local/bin:$PATH
+ENV DOCKER_ENV=1
+
 USER appuser
 
 CMD ["python", "app.py"]
